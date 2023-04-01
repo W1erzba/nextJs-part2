@@ -1,31 +1,35 @@
+import { MongoClient, ObjectId } from 'mongodb';
+
 import MeetupDetail from '../../components/meetups/MeetupDetail';
 
-function MeetupDetails() {
+function MeetupDetails(props) {
 	return (
 		<MeetupDetail
-			img='https://media.istockphoto.com/id/835041990/photo/colorful-evening-scene-on-wroclaw-market-square-with-town-hall.jpg?s=612x612&w=0&k=20&c=TqnVGcbL62dMRyhEb2Gltu072o-KZJmWW57lJZSyJOc='
-			title='This is a first meetup'
-			address='Plac Solny 5, 49-377 Wrocław'
-			description='This is a first meetup'
+			image={props.meetupData.image}
+			title={props.meetupData.title}
+			address={props.meetupData.address}
+			description={props.meetupData.description}
 		/>
 	);
 }
 
 export async function getStaticPaths() {
+	const client = await MongoClient.connect(
+		'mongodb+srv://Wierzba:wiadrokrowa1@cluster0.gfze6w8.mongodb.net/meetups?retryWrites=true&w=majority'
+	);
+	const db = client.db();
+
+	const meetupsCollection = db.collection('meetups');
+
+	const meetups = await meetupsCollection.find({}, { _id: 1 }).toArray();
+
+	client.close();
+
 	return {
 		fallback: false,
-		paths: [
-			{
-				params: {
-					meetupId: 'm1',
-				},
-			},
-			{
-				params: {
-					meetupId: 'm2',
-				},
-			},
-		],
+		paths: meetups.map((meetup) => ({
+			params: { meetupId: meetup._id.toString() },
+		})),
 	};
 }
 
@@ -34,16 +38,29 @@ export async function getStaticProps(context) {
 
 	const meetupId = context.params.meetupId;
 
-	console.log(meetupId);
+	const client = await MongoClient.connect(
+		'mongodb+srv://Wierzba:wiadrokrowa1@cluster0.gfze6w8.mongodb.net/meetups?retryWrites=true&w=majority'
+	);
+	const db = client.db();
+
+	const meetupsCollection = db.collection('meetups');
+
+	const selectedMeetup = await meetupsCollection.findOne({
+		_id: new ObjectId(meetupId),
+	});
+
+	console.log(selectedMeetup);
+
+	client.close();
 
 	return {
 		props: {
 			meetupData: {
-				img: 'https://media.istockphoto.com/id/835041990/photo/colorful-evening-scene-on-wroclaw-market-square-with-town-hall.jpg?s=612x612&w=0&k=20&c=TqnVGcbL62dMRyhEb2Gltu072o-KZJmWW57lJZSyJOc=',
-				id: meetupId,
-				title: 'This is a first meetup',
-				address: 'Plac Solny 5, 49-377 Wrocław',
-				description: 'This is a first meetup',
+				id: selectedMeetup._id.toString(),
+				title: selectedMeetup.title,
+				address: selectedMeetup.address,
+				image: selectedMeetup.image,
+				description: selectedMeetup.description,
 			},
 		},
 	};
